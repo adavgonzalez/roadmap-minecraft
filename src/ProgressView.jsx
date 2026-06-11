@@ -22,7 +22,7 @@ const CustomTooltip = ({ active, payload }) => {
   )
 }
 
-export default function ProgressView({ phases }) {
+export default function ProgressView({ phases, mobile }) {
   const allSteps   = phases.flatMap(p => p.steps || [])
   const total      = allSteps.length
   const completed  = allSteps.filter(s => s.status === 'completado').length
@@ -75,7 +75,7 @@ export default function ProgressView({ phases }) {
       </div>
 
       {/* Charts row */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1.6fr', gap:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1.6fr', gap:16 }}>
 
         {/* Donut chart */}
         <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:10, padding:'20px' }}>

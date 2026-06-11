@@ -185,7 +185,7 @@ function PhaseSection({ phase, onPhaseUpdated, onPhaseDeleted, onStepUpdated, on
               <span style={{ fontSize:13, fontWeight:700, color:C.text }}>{phase.name}</span>
               <span style={{ fontSize:11, color:C.muted, background:C.bg, padding:'1px 6px', borderRadius:3 }}>{done}/{total} · {pct}%</span>
             </div>
-            <div style={{ maxWidth:240 }}><ProgBar pct={pct} color={phase.color} /></div>
+            <div style={{ maxWidth:240, minWidth:80, flex:1 }}><ProgBar pct={pct} color={phase.color} /></div>
           </div>
           <div style={{ display:'flex', gap:2, flexShrink:0 }} onClick={e => e.stopPropagation()}>
             {confirm

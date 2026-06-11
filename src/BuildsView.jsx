@@ -134,7 +134,7 @@ function BuildCard({ build, onUpdated, onDeleted }) {
   )
 }
 
-export default function BuildsView({ builds, projectId, onBuildsChange }) {
+export default function BuildsView({ builds, projectId, onBuildsChange, mobile }) {
   const [filter,    setFilter]    = useState('all')
   const [addBuild,  setAddBuild]  = useState(false)
   const [statusF,   setStatusF]   = useState('all')
@@ -179,24 +179,29 @@ export default function BuildsView({ builds, projectId, onBuildsChange }) {
   return (
     <div>
       {/* Toolbar */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:10, marginBottom:20 }}>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', gap:4 }}>
+      <div style={{ display:'flex', flexDirection: mobile ? 'column' : 'row',
+        justifyContent:'space-between', gap:10, marginBottom:16 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {/* Dimension filter — horizontal scroll on mobile */}
+          <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:2 }}>
             {filterBtn('all',       '🌍 Todas',     filter==='all')}
             {filterBtn('overworld', '🌿 Overworld', filter==='overworld')}
             {filterBtn('nether',    '🔥 Nether',    filter==='nether')}
             {filterBtn('end',       '🌌 End',       filter==='end')}
           </div>
-          <div style={{ display:'flex', gap:4 }}>
-            {statusBtn('all',         'Todos',          statusF==='all')}
-            {statusBtn('planeado',    '🗺️ Planeado',    statusF==='planeado')}
-            {statusBtn('construyendo','🏗️ Construyendo', statusF==='construyendo')}
-            {statusBtn('terminado',   '✅ Terminado',   statusF==='terminado')}
+          {/* Status filter */}
+          <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:2 }}>
+            {statusBtn('all',          'Todos',           statusF==='all')}
+            {statusBtn('planeado',     '🗺️ Planeado',     statusF==='planeado')}
+            {statusBtn('construyendo', '🏗️ Construyendo',  statusF==='construyendo')}
+            {statusBtn('terminado',    '✅ Terminado',    statusF==='terminado')}
           </div>
         </div>
         <button onClick={() => setAddBuild(true)}
-          style={{ background:'#1d4ed8', color:'#fff', border:'none', borderRadius:7, padding:'8px 16px',
-            fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0, transition:'filter 0.15s' }}
+          style={{ background:'#1d4ed8', color:'#fff', border:'none', borderRadius:7,
+            padding:'9px 16px', fontSize:13, fontWeight:600, cursor:'pointer',
+            flexShrink:0, alignSelf: mobile ? 'stretch' : 'flex-start',
+            transition:'filter 0.15s', textAlign:'center' }}
           onMouseEnter={e => e.currentTarget.style.filter='brightness(1.2)'}
           onMouseLeave={e => e.currentTarget.style.filter='brightness(1)'}>
           + Nueva Construcción
