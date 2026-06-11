@@ -229,22 +229,103 @@ export function StepModal({ step, onSave, onClose }) {
 }
 
 export function BuildModal({ build, onSave, onClose }) {
-  const [name, setName] = useState(build?.name || '')
-  const [desc, setDesc] = useState(build?.description || '')
-  const [status, setStatus] = useState(build?.status || 'planeado')
-  const [dim, setDim] = useState(build?.dimension || 'overworld')
-  const [coords, setCoords] = useState(build?.coordinates || '')
-  const [notes, setNotes] = useState(build?.notes || '')
+  const [name,      setName]      = useState(build?.name        || '')
+  const [desc,      setDesc]      = useState(build?.description || '')
+  const [status,    setStatus]    = useState(build?.status      || 'planeado')
+  const [dim,       setDim]       = useState(build?.dimension   || 'overworld')
+  const [coords,    setCoords]    = useState(build?.coordinates || '')
+  const [notes,     setNotes]     = useState(build?.notes       || '')
+  const [imageUrl,  setImageUrl]  = useState(build?.image_url   || '')
+  const [uploading, setUploading] = useState(false)
+  const [dragOver,  setDragOver]  = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+
+  const { db: dbImport } = (() => { try { return { db: null } } catch { return { db: null } } })()
+
+  async function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      setUploadErr('Solo se aceptan imágenes (JPG, PNG, WebP, GIF)')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadErr('Máximo 5 MB por imagen')
+      return
+    }
+    setUploadErr('')
+    setUploading(true)
+    // dynamic import to avoid circular deps
+    const { db } = await import('./db')
+    // Remove old image if replacing
+    if (imageUrl) await db.storage.remove(imageUrl)
+    const { url, error } = await db.storage.upload(file)
+    if (error) { setUploadErr('Error al subir la imagen'); setUploading(false); return }
+    setImageUrl(url)
+    setUploading(false)
+  }
+
+  async function removeImage() {
+    if (!imageUrl) return
+    const { db } = await import('./db')
+    await db.storage.remove(imageUrl)
+    setImageUrl('')
+  }
+
   const save = () => {
     if (!name.trim()) return
-    onSave({ ...build, name: name.trim(), description: desc, status, dimension: dim, coordinates: coords, notes })
+    onSave({ ...build, name: name.trim(), description: desc, status, dimension: dim, coordinates: coords, notes, image_url: imageUrl })
     onClose()
   }
+
   const sel = { background:C.bg, border:`1px solid ${C.border}`, color:C.text, borderRadius:6, padding:'8px 12px', fontSize:14, cursor:'pointer', outline:'none', width:'100%' }
+
   return (
     <ModalWrap title={build?.id ? 'Editar Construcción' : 'Nueva Construcción'} onClose={onClose}>
       <Inp label="Nombre" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la construcción..." />
       <Textarea label="Descripción" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Qué es y para qué sirve..." rows={2} />
+
+      {/* Image uploader */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:6, fontWeight:500 }}>📸 Imagen / Screenshot</div>
+        {imageUrl ? (
+          <div style={{ position:'relative', borderRadius:8, overflow:'hidden', border:`1px solid ${C.border}` }}>
+            <img src={imageUrl} alt="build" style={{ width:'100%', maxHeight:200, objectFit:'cover', display:'block' }} />
+            <button onClick={removeImage}
+              style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.75)', border:'none',
+                color:'#fca5a5', borderRadius:5, padding:'4px 10px', fontSize:12, cursor:'pointer',
+                backdropFilter:'blur(4px)' }}>
+              × Eliminar
+            </button>
+          </div>
+        ) : (
+          <label
+            onDragOver={e  => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
+            style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+              gap:8, padding:'24px', borderRadius:8, cursor:'pointer', transition:'all 0.15s',
+              border:`2px dashed ${dragOver ? '#3b82f6' : C.border}`,
+              background: dragOver ? '#0f1f35' : 'transparent' }}>
+            {uploading ? (
+              <>
+                <span style={{ fontSize:22 }}>⏳</span>
+                <span style={{ fontSize:12, color:'#60a5fa' }}>Subiendo imagen…</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize:26 }}>🖼️</span>
+                <span style={{ fontSize:12, color:C.muted, textAlign:'center' }}>
+                  Arrastra una imagen o <span style={{ color:'#60a5fa' }}>haz click para seleccionar</span>
+                  <br/><span style={{ fontSize:10, opacity:0.6 }}>JPG, PNG, WebP, GIF · máx. 5 MB</span>
+                </span>
+              </>
+            )}
+            <input type="file" accept="image/*" style={{ display:'none' }}
+              onChange={e => handleFile(e.target.files[0])} />
+          </label>
+        )}
+        {uploadErr && <div style={{ fontSize:11, color:'#f87171', marginTop:4 }}>⚠ {uploadErr}</div>}
+      </div>
+
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
         <Field label="Estado">
           <select value={status} onChange={e => setStatus(e.target.value)} style={sel}>

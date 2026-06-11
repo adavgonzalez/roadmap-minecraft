@@ -25,4 +25,23 @@ export const db = {
     update: (id, b)  => supabase.from('builds').update(b).eq('id', id).select().single(),
     delete: (id)     => supabase.from('builds').delete().eq('id', id),
   },
+  storage: {
+    upload: async (file) => {
+      const ext  = file.name.split('.').pop()
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`
+      const { data, error } = await supabase.storage
+        .from('builds-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false })
+      if (error) return { error }
+      const { data: { publicUrl } } = supabase.storage
+        .from('builds-images')
+        .getPublicUrl(data.path)
+      return { url: publicUrl }
+    },
+    remove: async (url) => {
+      if (!url) return
+      const path = url.split('/builds-images/')[1]
+      if (path) await supabase.storage.from('builds-images').remove([path])
+    },
+  },
 }

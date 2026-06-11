@@ -20,6 +20,7 @@ function BuildCard({ build, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [hover,   setHover]   = useState(false)
+  const [imgZoom, setImgZoom] = useState(false)
 
   const dim = DIM[build.dimension] || DIM.overworld
   const sta = STATUS[build.status] || STATUS.planeado
@@ -30,6 +31,7 @@ function BuildCard({ build, onUpdated, onDeleted }) {
   }
 
   async function handleDelete() {
+    if (build.image_url) await db.storage.remove(build.image_url)
     await db.builds.delete(build.id)
     onDeleted(build.id)
   }
@@ -38,67 +40,94 @@ function BuildCard({ build, onUpdated, onDeleted }) {
     <>
       <div onMouseEnter={() => setHover(true)} onMouseLeave={() => { setHover(false); setConfirm(false) }}
         style={{ background: hover ? '#1c2d42' : C.card, border:`1px solid ${hover ? '#2a3f58' : C.border}`,
-          borderTop:`3px solid ${dim.color}`, borderRadius:10, padding:'16px',
-          transition:'background 0.15s, border-color 0.15s', position:'relative' }}>
+          borderTop:`3px solid ${dim.color}`, borderRadius:10,
+          transition:'background 0.15s, border-color 0.15s', overflow:'hidden', position:'relative' }}>
 
-        {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:10 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-            <span style={{ fontSize:20, flexShrink:0 }}>{dim.emoji}</span>
-            <span style={{ fontSize:14, fontWeight:700, color:C.text, lineHeight:1.3 }}>{build.name}</span>
+        {/* Image */}
+        {build.image_url && (
+          <div style={{ position:'relative', cursor:'zoom-in' }} onClick={() => setImgZoom(true)}>
+            <img src={build.image_url} alt={build.name}
+              style={{ width:'100%', height:160, objectFit:'cover', display:'block' }} />
+            <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 60%, rgba(9,14,22,0.8))',
+              pointerEvents:'none' }} />
+            <span style={{ position:'absolute', bottom:7, right:9, fontSize:10, color:'rgba(255,255,255,0.5)',
+              background:'rgba(0,0,0,0.4)', padding:'1px 6px', borderRadius:3, backdropFilter:'blur(4px)' }}>
+              🔍 ampliar
+            </span>
           </div>
-          {hover && !confirm && (
-            <div style={{ display:'flex', gap:2, flexShrink:0 }}>
-              <button onClick={() => setEditing(true)}
-                style={{ background:'none', border:'none', cursor:'pointer', color:C.muted, padding:'2px 5px', fontSize:13 }}
-                onMouseEnter={e => e.currentTarget.style.color='#94a3b8'}
-                onMouseLeave={e => e.currentTarget.style.color=C.muted}>✏️</button>
-              <button onClick={() => setConfirm(true)}
-                style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', padding:'2px 5px', fontSize:13 }}
-                onMouseEnter={e => e.currentTarget.style.color='#f87171'}
-                onMouseLeave={e => e.currentTarget.style.color='#ef4444'}>🗑</button>
+        )}
+
+        <div style={{ padding:'14px 15px' }}>
+          {/* Header */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+              <span style={{ fontSize:20, flexShrink:0 }}>{dim.emoji}</span>
+              <span style={{ fontSize:14, fontWeight:700, color:C.text, lineHeight:1.3 }}>{build.name}</span>
+            </div>
+            {hover && !confirm && (
+              <div style={{ display:'flex', gap:2, flexShrink:0 }}>
+                <button onClick={() => setEditing(true)}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:C.muted, padding:'2px 5px', fontSize:13 }}
+                  onMouseEnter={e => e.currentTarget.style.color='#94a3b8'}
+                  onMouseLeave={e => e.currentTarget.style.color=C.muted}>✏️</button>
+                <button onClick={() => setConfirm(true)}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', padding:'2px 5px', fontSize:13 }}
+                  onMouseEnter={e => e.currentTarget.style.color='#f87171'}
+                  onMouseLeave={e => e.currentTarget.style.color='#ef4444'}>🗑</button>
+              </div>
+            )}
+            {confirm && (
+              <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                <button onClick={handleDelete}
+                  style={{ background:'#7f1d1d', color:'#fca5a5', border:'none', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', fontWeight:600 }}>Sí</button>
+                <button onClick={() => setConfirm(false)}
+                  style={{ background:'#1c2b3f', color:'#94a3b8', border:'none', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer' }}>No</button>
+              </div>
+            )}
+          </div>
+
+          {/* Badges */}
+          <div style={{ display:'flex', gap:6, marginBottom: build.description ? 10 : 0, flexWrap:'wrap' }}>
+            <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:dim.bg, color:dim.color }}>
+              {dim.emoji} {dim.label}
+            </span>
+            <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:sta.bg, color:sta.color }}>
+              {build.status === 'planeado' ? '🗺️' : build.status === 'construyendo' ? '🏗️' : '✅'} {sta.label}
+            </span>
+          </div>
+
+          {build.description && (
+            <p style={{ fontSize:13, color:C.muted, lineHeight:1.5, marginBottom:8 }}>{build.description}</p>
+          )}
+
+          {build.coordinates && (
+            <div style={{ fontSize:12, color:'#60a5fa', display:'flex', alignItems:'center', gap:4, marginBottom: build.notes ? 6 : 0 }}>
+              <span>📍</span><span style={{ fontFamily:'monospace' }}>{build.coordinates}</span>
             </div>
           )}
-          {confirm && (
-            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-              <button onClick={handleDelete}
-                style={{ background:'#7f1d1d', color:'#fca5a5', border:'none', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', fontWeight:600 }}>Sí</button>
-              <button onClick={() => setConfirm(false)}
-                style={{ background:'#1c2b3f', color:'#94a3b8', border:'none', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer' }}>No</button>
+
+          {build.notes && (
+            <div style={{ fontSize:12, color:C.muted, paddingTop:8, borderTop:`1px solid ${C.border}`,
+              fontStyle:'italic', lineHeight:1.4, marginTop:6 }}>
+              {build.notes}
             </div>
           )}
         </div>
-
-        {/* Badges row */}
-        <div style={{ display:'flex', gap:6, marginBottom: build.description ? 10 : 0, flexWrap:'wrap' }}>
-          <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:dim.bg, color:dim.color }}>
-            {dim.emoji} {dim.label}
-          </span>
-          <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:sta.bg, color:sta.color }}>
-            {build.status === 'planeado' ? '🗺️' : build.status === 'construyendo' ? '🏗️' : '✅'} {sta.label}
-          </span>
-        </div>
-
-        {/* Description */}
-        {build.description && (
-          <p style={{ fontSize:13, color:C.muted, lineHeight:1.5, marginBottom:8 }}>{build.description}</p>
-        )}
-
-        {/* Coords */}
-        {build.coordinates && (
-          <div style={{ fontSize:12, color:'#60a5fa', display:'flex', alignItems:'center', gap:4, marginBottom: build.notes ? 6 : 0 }}>
-            <span>📍</span><span style={{ fontFamily:'monospace' }}>{build.coordinates}</span>
-          </div>
-        )}
-
-        {/* Notes */}
-        {build.notes && (
-          <div style={{ fontSize:12, color:C.muted, marginTop:6, paddingTop:6,
-            borderTop:`1px solid ${C.border}`, fontStyle:'italic', lineHeight:1.4 }}>
-            {build.notes}
-          </div>
-        )}
       </div>
+
+      {/* Lightbox */}
+      {imgZoom && (
+        <div onClick={() => setImgZoom(false)}
+          style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,0.92)',
+            display:'flex', alignItems:'center', justifyContent:'center', cursor:'zoom-out', padding:20 }}>
+          <img src={build.image_url} alt={build.name}
+            style={{ maxWidth:'90vw', maxHeight:'88vh', objectFit:'contain', borderRadius:8,
+              boxShadow:'0 0 80px rgba(0,0,0,0.8)' }} />
+          <div style={{ position:'absolute', top:16, right:20, color:'rgba(255,255,255,0.5)', fontSize:13 }}>
+            ESC / click para cerrar
+          </div>
+        </div>
+      )}
 
       {editing && <BuildModal build={build} onSave={handleEdit} onClose={() => setEditing(false)} />}
     </>
