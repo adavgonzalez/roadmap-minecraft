@@ -6,6 +6,7 @@ import { useIsMobile } from './hooks'
 import RoadmapView  from './RoadmapView'
 import ProgressView from './ProgressView'
 import BuildsView   from './BuildsView'
+import TimelineView from './TimelineView'
 
 const C = { bg:'#080d16', panel:'#0f1724', border:'#1c2b3f', text:'#f0f4fa', muted:'#5a7190' }
 
@@ -98,6 +99,7 @@ function TabBar({ active, onChange, project, mobile, onMenuOpen }) {
     { id:'roadmap',  full:'📋 Roadmap',        short:'📋' },
     { id:'progress', full:'📊 Progreso',        short:'📊' },
     { id:'builds',   full:'🏗️ Construcciones',  short:'🏗️' },
+    { id:'timeline', full:'📅 Timeline',        short:'📅' },
   ]
   return (
     <div style={{ background:C.panel, borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
@@ -327,6 +329,7 @@ export default function App() {
               {tab === 'roadmap'  && <RoadmapView  phases={phases}  projectId={activeId} onPhasesChange={setPhases} />}
               {tab === 'progress' && <ProgressView phases={phases}  mobile={isMobile} />}
               {tab === 'builds'   && <BuildsView   builds={builds}  projectId={activeId} onBuildsChange={setBuilds} mobile={isMobile} />}
+              {tab === 'timeline' && <TimelineView phases={phases}  onPhasesChange={setPhases} mobile={isMobile} />}
             </div>
           </>
         ) : (
