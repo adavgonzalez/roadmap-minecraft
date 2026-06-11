@@ -3,6 +3,66 @@ import MarkdownRenderer from './MarkdownRenderer'
 
 const C = { bg: '#080d16', panel: '#0f1724', border: '#1c2b3f', text: '#f0f4fa', muted: '#5a7190' }
 const COLORS = ['#10b981','#3b82f6','#ef4444','#f59e0b','#a855f7','#06b6d4','#ec4899','#f97316']
+
+/* ── Shared image uploader ── */
+export function ImageUploader({ imageUrl, onChange, label = '📸 Imagen de referencia' }) {
+  const [uploading, setUploading] = useState(false)
+  const [dragOver,  setDragOver]  = useState(false)
+  const [err,       setErr]       = useState('')
+
+  async function handleFile(file) {
+    if (!file?.type.startsWith('image/')) { setErr('Solo imágenes (JPG, PNG, WebP, GIF)'); return }
+    if (file.size > 5 * 1024 * 1024)     { setErr('Máximo 5 MB'); return }
+    setErr(''); setUploading(true)
+    const { db } = await import('./db')
+    if (imageUrl) await db.storage.remove(imageUrl)
+    const { url, error } = await db.storage.upload(file)
+    if (error) { setErr('Error al subir'); setUploading(false); return }
+    onChange(url); setUploading(false)
+  }
+
+  async function remove() {
+    const { db } = await import('./db')
+    await db.storage.remove(imageUrl)
+    onChange('')
+  }
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize:12, color:C.muted, marginBottom:6, fontWeight:500 }}>{label}</div>
+      {imageUrl ? (
+        <div style={{ position:'relative', borderRadius:8, overflow:'hidden', border:`1px solid ${C.border}` }}>
+          <img src={imageUrl} alt="" style={{ width:'100%', maxHeight:180, objectFit:'cover', display:'block' }} />
+          <button onClick={remove}
+            style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.75)', border:'none',
+              color:'#fca5a5', borderRadius:5, padding:'4px 10px', fontSize:12, cursor:'pointer' }}>
+            × Eliminar
+          </button>
+        </div>
+      ) : (
+        <label
+          onDragOver={e  => { e.preventDefault(); setDragOver(true)  }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }}
+          style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+            gap:6, padding:'20px', borderRadius:8, cursor:'pointer', transition:'all 0.15s',
+            border:`2px dashed ${dragOver ? '#3b82f6' : C.border}`,
+            background: dragOver ? '#0f1f35' : 'transparent' }}>
+          {uploading
+            ? <><span style={{ fontSize:20 }}>⏳</span><span style={{ fontSize:12, color:'#60a5fa' }}>Subiendo…</span></>
+            : <><span style={{ fontSize:22 }}>🖼️</span>
+               <span style={{ fontSize:12, color:C.muted, textAlign:'center' }}>
+                 Arrastra o <span style={{ color:'#60a5fa' }}>haz click</span>
+                 <br/><span style={{ fontSize:10, opacity:0.6 }}>JPG, PNG, WebP · máx 5 MB</span>
+               </span></>
+          }
+          <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => handleFile(e.target.files[0])} />
+        </label>
+      )}
+      {err && <div style={{ fontSize:11, color:'#f87171', marginTop:4 }}>⚠ {err}</div>}
+    </div>
+  )
+}
 const EMOJIS = ['🛠️','🚀','🎮','⚡','🔥','🌟','🎯','💡','🏗️','📦','🔬','🎲','🌌','💎','🏆','⚔️','🧪','🌿','🦄','🎪']
 
 const inp = {
@@ -96,13 +156,26 @@ export function ProjectModal({ project, onSave, onClose }) {
 }
 
 export function PhaseModal({ phase, onSave, onClose }) {
-  const [name,  setName]  = useState(phase?.name  || '')
-  const [color, setColor] = useState(phase?.color || COLORS[1])
+  const [name,     setName]     = useState(phase?.name  || '')
+  const [color,    setColor]    = useState(phase?.color || COLORS[1])
+  const [notes,    setNotes]    = useState(phase?.notes || '')
+  const [notesTab, setNotesTab] = useState('write')
+
   const save = () => {
     if (!name.trim()) return
-    onSave({ ...phase, name: name.trim(), color })
+    onSave({ ...phase, name: name.trim(), color, notes })
     onClose()
   }
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => setNotesTab(id)}
+      style={{ padding:'4px 12px', fontSize:11, fontWeight:600, cursor:'pointer', border:'none', borderRadius:4,
+        background: notesTab === id ? '#1c2b3f' : 'transparent',
+        color:      notesTab === id ? C.text    : C.muted }}>
+      {label}
+    </button>
+  )
+
   return (
     <ModalWrap title={phase?.id ? 'Editar Fase' : 'Nueva Fase'} onClose={onClose}>
       <Inp label="Nombre de la fase" value={name} onChange={e => setName(e.target.value)} placeholder="FASE N — Descripción..." />
@@ -115,6 +188,35 @@ export function PhaseModal({ phase, onSave, onClose }) {
           ))}
         </div>
       </Field>
+
+      {/* Phase notes with markdown */}
+      <div style={{ marginBottom:14 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <div style={{ fontSize:12, color:C.muted, fontWeight:500 }}>
+            📝 Notas de fase <span style={{ fontSize:10, color:'#3b82f6', marginLeft:4 }}>Markdown</span>
+          </div>
+          <div style={{ display:'flex', gap:2, background:'#080d16', borderRadius:5, padding:2 }}>
+            {tabBtn('write',   '✏️ Escribir')}
+            {tabBtn('preview', '👁 Preview')}
+          </div>
+        </div>
+        {notesTab === 'write' ? (
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5}
+            placeholder="Objetivos de la fase, materiales clave, referencias..."
+            style={{ ...inp, resize:'vertical', lineHeight:1.55, fontFamily:"'Fira Code', monospace", fontSize:12 }}
+            onFocus={e => e.target.style.borderColor='#3b82f6'}
+            onBlur={e  => e.target.style.borderColor=C.border} />
+        ) : (
+          <div style={{ minHeight:80, background:'#080d16', border:`1px solid ${C.border}`,
+            borderRadius:6, padding:'10px 14px' }}>
+            {notes.trim()
+              ? <MarkdownRenderer content={notes} />
+              : <span style={{ color:C.muted, fontSize:12, fontStyle:'italic' }}>Sin notas…</span>
+            }
+          </div>
+        )}
+      </div>
+
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:6 }}>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
         <Btn onClick={save}>Guardar</Btn>
@@ -127,6 +229,7 @@ export function StepModal({ step, onSave, onClose }) {
   const [title,       setTitle]    = useState(step?.title        || '')
   const [desc,        setDesc]     = useState(step?.description  || '')
   const [notes,       setNotes]    = useState(step?.notes        || '')
+  const [imageUrl,    setImageUrl] = useState(step?.image_url    || '')
   const [badges,      setBadges]   = useState(step?.badges       || [])
   const [bl,          setBl]       = useState('')
   const [bt,          setBt]       = useState('default')
@@ -139,7 +242,7 @@ export function StepModal({ step, onSave, onClose }) {
   }
   const save = () => {
     if (!title.trim()) return
-    onSave({ ...step, title: title.trim(), description: desc, badges, notes })
+    onSave({ ...step, title: title.trim(), description: desc, badges, notes, image_url: imageUrl })
     onClose()
   }
 
@@ -220,6 +323,7 @@ export function StepModal({ step, onSave, onClose }) {
           <Btn onClick={addBadge}>+</Btn>
         </div>
       </Field>
+      <ImageUploader imageUrl={imageUrl} onChange={setImageUrl} />
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:6 }}>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
         <Btn onClick={save}>Guardar</Btn>
