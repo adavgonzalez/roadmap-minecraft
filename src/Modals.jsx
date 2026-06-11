@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import MarkdownRenderer from './MarkdownRenderer'
 
 const C = { bg: '#080d16', panel: '#0f1724', border: '#1c2b3f', text: '#f0f4fa', muted: '#5a7190' }
 const COLORS = ['#10b981','#3b82f6','#ef4444','#f59e0b','#a855f7','#06b6d4','#ec4899','#f97316']
@@ -123,11 +124,14 @@ export function PhaseModal({ phase, onSave, onClose }) {
 }
 
 export function StepModal({ step, onSave, onClose }) {
-  const [title,  setTitle]  = useState(step?.title  || '')
-  const [desc,   setDesc]   = useState(step?.description || '')
-  const [badges, setBadges] = useState(step?.badges || [])
-  const [bl, setBl] = useState('')
-  const [bt, setBt] = useState('default')
+  const [title,       setTitle]    = useState(step?.title        || '')
+  const [desc,        setDesc]     = useState(step?.description  || '')
+  const [notes,       setNotes]    = useState(step?.notes        || '')
+  const [badges,      setBadges]   = useState(step?.badges       || [])
+  const [bl,          setBl]       = useState('')
+  const [bt,          setBt]       = useState('default')
+  const [notesTab,    setNotesTab] = useState('write') // 'write' | 'preview'
+
   const addBadge = () => {
     if (!bl.trim()) return
     setBadges(p => [...p, { label: bl.trim(), type: bt }])
@@ -135,13 +139,62 @@ export function StepModal({ step, onSave, onClose }) {
   }
   const save = () => {
     if (!title.trim()) return
-    onSave({ ...step, title: title.trim(), description: desc, badges })
+    onSave({ ...step, title: title.trim(), description: desc, badges, notes })
     onClose()
   }
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => setNotesTab(id)}
+      style={{ padding:'4px 12px', fontSize:11, fontWeight:600, cursor:'pointer', border:'none', borderRadius:4,
+        background: notesTab === id ? '#1c2b3f' : 'transparent',
+        color:      notesTab === id ? C.text    : C.muted }}>
+      {label}
+    </button>
+  )
+
   return (
     <ModalWrap title={step?.id ? 'Editar Paso' : 'Nuevo Paso'} onClose={onClose}>
       <Inp label="Título" value={title} onChange={e => setTitle(e.target.value)} placeholder="Nombre del paso..." />
-      <Textarea label="Descripción" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Para qué sirve este paso..." rows={4} />
+      <Textarea label="Descripción breve" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Para qué sirve este paso..." rows={2} />
+
+      {/* Notes with editor/preview */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <div style={{ fontSize:12, color:C.muted, fontWeight:500 }}>
+            📝 Notas <span style={{ fontSize:10, color:'#3b82f6', marginLeft:4 }}>Markdown soportado</span>
+          </div>
+          <div style={{ display:'flex', gap:2, background:'#080d16', borderRadius:5, padding:2 }}>
+            {tabBtn('write',   '✏️ Escribir')}
+            {tabBtn('preview', '👁 Preview')}
+          </div>
+        </div>
+
+        {notesTab === 'write' ? (
+          <div>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={7}
+              placeholder={`Pega links de tutoriales, comandos, materiales necesarios...\n\n## Tutorial\nhttps://youtube.com/...\n\n## Materiales\n- 64x Piedra\n- 32x Madera\n\n\`\`\`\n/tp 120 64 -300\n\`\`\``}
+              style={{ ...inp, resize:'vertical', lineHeight:1.55, fontFamily:"'Fira Code', monospace", fontSize:12 }}
+              onFocus={e => e.target.style.borderColor='#3b82f6'}
+              onBlur={e  => e.target.style.borderColor=C.border}
+            />
+            <div style={{ fontSize:10, color:C.muted, marginTop:4 }}>
+              `código` · **negrita** · ## Título · - lista · [link](url)
+            </div>
+          </div>
+        ) : (
+          <div style={{ minHeight:120, background:'#080d16', border:`1px solid ${C.border}`,
+            borderRadius:6, padding:'10px 14px' }}>
+            {notes.trim()
+              ? <MarkdownRenderer content={notes} />
+              : <span style={{ color:C.muted, fontSize:12, fontStyle:'italic' }}>Sin notas todavía…</span>
+            }
+          </div>
+        )}
+      </div>
+
       <Field label="Etiquetas">
         {badges.length > 0 && (
           <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:8 }}>

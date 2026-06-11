@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { db } from './db'
 import { PhaseModal, StepModal } from './Modals'
+import MarkdownRenderer from './MarkdownRenderer'
 
 const C = { bg:'#080d16', panel:'#0f1724', card:'#172030', border:'#1c2b3f', text:'#f0f4fa', muted:'#5a7190', hover:'#1c2d42' }
 
@@ -40,15 +41,16 @@ function IBtn({ onClick, title, children, danger }) {
 }
 
 function StepCard({ step, phaseId, onUpdated, onDeleted }) {
-  const [hover, setHover]     = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [confirm, setConfirm] = useState(false)
-  const [saving,  setSaving]  = useState(false)
+  const [hover,       setHover]       = useState(false)
+  const [editing,     setEditing]     = useState(false)
+  const [confirm,     setConfirm]     = useState(false)
+  const [saving,      setSaving]      = useState(false)
+  const [notesOpen,   setNotesOpen]   = useState(false)
 
   const borderColor = { pendiente:'#2a3a4d', progreso:'#f59e0b', completado:'#10b981' }[step.status]
   const bgColor     = { pendiente:C.card,    progreso:'#1c1908',  completado:'#0b1b10' }[step.status]
   const done        = step.status === 'completado'
-  const prog        = step.status === 'progreso'
+  const hasNotes    = !!step.notes?.trim()
 
   async function changeStatus(val) {
     setSaving(true)
@@ -59,7 +61,7 @@ function StepCard({ step, phaseId, onUpdated, onDeleted }) {
 
   async function handleEdit(fields) {
     const { data } = await db.steps.update(step.id, fields)
-    if (data) onUpdated(data)
+    if (data) { onUpdated(data); if (!fields.notes?.trim()) setNotesOpen(false) }
   }
 
   async function handleDelete() {
@@ -73,36 +75,67 @@ function StepCard({ step, phaseId, onUpdated, onDeleted }) {
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => { setHover(false); setConfirm(false) }}
         style={{ background: hover ? C.hover : bgColor, border:`1px solid ${hover ? '#263548' : C.border}`,
-          borderLeft:`4px solid ${borderColor}`, borderRadius:8, padding:'13px 15px', marginBottom:8,
-          transition:'background 0.15s,border-color 0.15s', opacity: done ? 0.75 : 1 }}
+          borderLeft:`4px solid ${borderColor}`, borderRadius:8, marginBottom:8,
+          transition:'background 0.15s,border-color 0.15s', opacity: done ? 0.78 : 1 }}
       >
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, flexWrap:'wrap' }}>
-          <span style={{ fontSize:14, fontWeight:600, flex:1, minWidth:0, lineHeight:1.4,
-            color: done ? C.muted : C.text, textDecoration: done ? 'line-through' : 'none' }}>
-            {step.title}
-            {saving && <span style={{ fontSize:11, color:'#60a5fa', marginLeft:8, fontWeight:400 }}>guardando…</span>}
-          </span>
-          <div style={{ display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
-            {confirm
-              ? <ConfirmDel label="¿Eliminar?" onConfirm={handleDelete} onCancel={() => setConfirm(false)} />
-              : hover && <><IBtn onClick={() => setEditing(true)} title="Editar">✏️</IBtn>
-                          <IBtn onClick={() => setConfirm(true)} danger title="Eliminar">🗑</IBtn></>
-            }
-            <select value={step.status} onChange={e => changeStatus(e.target.value)}
-              style={{ background:C.bg, color:C.text, border:`1px solid ${C.border}`, padding:'4px 8px', borderRadius:5, fontSize:12, cursor:'pointer', outline:'none', flexShrink:0 }}>
-              <option value="pendiente">Pendiente</option>
-              <option value="progreso">En Progreso</option>
-              <option value="completado">Completado</option>
-            </select>
+        {/* Main row */}
+        <div style={{ padding:'13px 15px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10, flexWrap:'wrap' }}>
+            <span style={{ fontSize:14, fontWeight:600, flex:1, minWidth:0, lineHeight:1.4,
+              color: done ? C.muted : C.text, textDecoration: done ? 'line-through' : 'none' }}>
+              {step.title}
+              {saving && <span style={{ fontSize:11, color:'#60a5fa', marginLeft:8, fontWeight:400 }}>guardando…</span>}
+            </span>
+            <div style={{ display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
+              {confirm
+                ? <ConfirmDel label="¿Eliminar?" onConfirm={handleDelete} onCancel={() => setConfirm(false)} />
+                : hover && <><IBtn onClick={() => setEditing(true)} title="Editar">✏️</IBtn>
+                              <IBtn onClick={() => setConfirm(true)} danger title="Eliminar">🗑</IBtn></>
+              }
+              <select value={step.status} onChange={e => changeStatus(e.target.value)}
+                style={{ background:C.bg, color:C.text, border:`1px solid ${C.border}`, padding:'4px 8px', borderRadius:5, fontSize:12, cursor:'pointer', outline:'none', flexShrink:0 }}>
+                <option value="pendiente">Pendiente</option>
+                <option value="progreso">En Progreso</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
+          </div>
+
+          {step.description && (
+            <p style={{ fontSize:13, color:C.muted, margin:'7px 0 0', lineHeight:1.55 }}>{step.description}</p>
+          )}
+
+          {/* Badges + notes toggle */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop: (step.badges?.length > 0 || hasNotes) ? 8 : 0, flexWrap:'wrap', gap:6 }}>
+            {step.badges?.length > 0 && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                {step.badges.map((b, i) => <Badge key={i} label={b.label} type={b.type} />)}
+              </div>
+            )}
+            {hasNotes && (
+              <button
+                onClick={() => setNotesOpen(o => !o)}
+                style={{ background:'none', border:`1px solid ${notesOpen ? '#3b82f6' : '#1c2b3f'}`,
+                  borderRadius:5, padding:'2px 9px', fontSize:11, cursor:'pointer', flexShrink:0,
+                  color: notesOpen ? '#60a5fa' : C.muted, transition:'all 0.15s',
+                  marginLeft:'auto' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#3b82f6'; e.currentTarget.style.color='#60a5fa' }}
+                onMouseLeave={e => { if (!notesOpen) { e.currentTarget.style.borderColor='#1c2b3f'; e.currentTarget.style.color=C.muted } }}>
+                📝 Notas {notesOpen ? '▴' : '▾'}
+              </button>
+            )}
           </div>
         </div>
-        {step.description && <p style={{ fontSize:13, color:C.muted, margin:'7px 0 0', lineHeight:1.55 }}>{step.description}</p>}
-        {step.badges?.length > 0 && (
-          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:8 }}>
-            {step.badges.map((b, i) => <Badge key={i} label={b.label} type={b.type} />)}
+
+        {/* Notes panel */}
+        {notesOpen && hasNotes && (
+          <div style={{ borderTop:`1px solid ${C.border}`, padding:'12px 15px 14px',
+            background:'rgba(0,0,0,0.2)', borderRadius:'0 0 7px 7px' }}>
+            <MarkdownRenderer content={step.notes} />
           </div>
         )}
       </div>
+
       {editing && (
         <StepModal step={step} onSave={handleEdit} onClose={() => setEditing(false)} />
       )}
