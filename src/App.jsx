@@ -78,7 +78,7 @@ function Sidebar({ projects, activeId, onSelect, onAdd, mobile, open, onClose })
             letterSpacing:'0.1em', opacity:0.7 }}>PROYECTOS</div>
 
           {projects.map(p => {
-            const allS = p.phases.flatMap(ph => ph.steps || [])
+            const allS = p.phases?.flatMap(ph => ph.steps || []) || []
             const pct  = allS.length > 0 ? Math.round(allS.filter(s => s.status==='completado').length / allS.length * 100) : 0
             const active = p.id === activeId
             return (

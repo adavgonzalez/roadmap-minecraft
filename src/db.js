@@ -2,7 +2,9 @@ import { supabase } from './supabase'
 
 export const db = {
   projects: {
-    list:   ()       => supabase.from('projects').select('*').order('created_at'),
+    list:   ()       => supabase.from('projects')
+                          .select('*, phases(id, steps(id, status))')
+                          .order('created_at'),
     insert: (p)      => supabase.from('projects').insert(p).select().single(),
     update: (id, p)  => supabase.from('projects').update(p).eq('id', id).select().single(),
     delete: (id)     => supabase.from('projects').delete().eq('id', id),
