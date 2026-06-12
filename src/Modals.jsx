@@ -225,15 +225,22 @@ export function PhaseModal({ phase, onSave, onClose }) {
   )
 }
 
+const getYtId = url => {
+  if (!url) return null
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/))([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
 export function StepModal({ step, onSave, onClose }) {
   const [title,       setTitle]    = useState(step?.title        || '')
   const [desc,        setDesc]     = useState(step?.description  || '')
   const [notes,       setNotes]    = useState(step?.notes        || '')
   const [imageUrl,    setImageUrl] = useState(step?.image_url    || '')
+  const [ytUrl,       setYtUrl]    = useState(step?.youtube_url  || '')
   const [badges,      setBadges]   = useState(step?.badges       || [])
   const [bl,          setBl]       = useState('')
   const [bt,          setBt]       = useState('default')
-  const [notesTab,    setNotesTab] = useState('write') // 'write' | 'preview'
+  const [notesTab,    setNotesTab] = useState('write')
 
   const addBadge = () => {
     if (!bl.trim()) return
@@ -242,7 +249,7 @@ export function StepModal({ step, onSave, onClose }) {
   }
   const save = () => {
     if (!title.trim()) return
-    onSave({ ...step, title: title.trim(), description: desc, badges, notes, image_url: imageUrl })
+    onSave({ ...step, title: title.trim(), description: desc, badges, notes, image_url: imageUrl, youtube_url: ytUrl })
     onClose()
   }
 
@@ -324,6 +331,47 @@ export function StepModal({ step, onSave, onClose }) {
         </div>
       </Field>
       <ImageUploader imageUrl={imageUrl} onChange={setImageUrl} />
+
+      {/* YouTube tutorial field */}
+      <div style={{ marginBottom:14 }}>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:6, fontWeight:500 }}>
+          📺 Tutorial de YouTube
+        </div>
+        <input
+          value={ytUrl}
+          onChange={e => setYtUrl(e.target.value)}
+          placeholder="https://youtube.com/watch?v=... o youtu.be/..."
+          style={{ ...inp, marginBottom: getYtId(ytUrl) ? 8 : 0 }}
+          onFocus={e => e.target.style.borderColor='#ff0000'}
+          onBlur={e  => e.target.style.borderColor=C.border}
+        />
+        {getYtId(ytUrl) && (
+          <div style={{ position:'relative', borderRadius:8, overflow:'hidden',
+            border:'1px solid #1c2d42', cursor:'pointer' }}>
+            <img
+              src={`https://img.youtube.com/vi/${getYtId(ytUrl)}/hqdefault.jpg`}
+              alt="Miniatura"
+              style={{ width:'100%', display:'block', aspectRatio:'16/9', objectFit:'cover' }}
+              onError={e => e.target.style.display='none'}
+            />
+            <div style={{ position:'absolute', inset:0, display:'flex',
+              alignItems:'center', justifyContent:'center',
+              background:'rgba(0,0,0,0.25)' }}>
+              <div style={{ width:48, height:48, borderRadius:'50%', background:'rgba(255,0,0,0.9)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                boxShadow:'0 2px 16px rgba(0,0,0,0.6)' }}>
+                <span style={{ color:'#fff', fontSize:18, marginLeft:4 }}>▶</span>
+              </div>
+            </div>
+            <div style={{ position:'absolute', bottom:0, left:0, right:0,
+              background:'linear-gradient(transparent, rgba(0,0,0,0.7))',
+              padding:'16px 10px 6px', fontSize:11, color:'rgba(255,255,255,0.7)' }}>
+              ✅ Miniatura detectada — guarda para vincular
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:6 }}>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
         <Btn onClick={save}>Guardar</Btn>

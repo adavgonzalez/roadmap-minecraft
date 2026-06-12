@@ -1,4 +1,5 @@
 import { db } from './db'
+import { supabase } from './supabase'
 
 const MC = {
   project: { name: 'Roadmap Técnico Minecraft', emoji: '🛠️', color: '#10b981', description: 'Plan de progresión industrial y automatización global.' },
@@ -38,17 +39,30 @@ const MC = {
 }
 
 export async function seedIfEmpty() {
-  const { data: existing } = await db.projects.list()
-  if (existing && existing.length > 0) return
+  try {
+    // Check permanent seeded flag — only seed once, regardless of whether projects get deleted
+    const { data: flag } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'seeded')
+      .maybeSingle()
 
-  const { data: project, error } = await db.projects.insert(MC.project)
-  if (error || !project) { console.error('seed project error', error); return }
+    if (flag?.value === 'true') return
 
-  for (const { steps, ...phaseFields } of MC.phases) {
-    const { data: phase, error: phErr } = await db.phases.insert({ ...phaseFields, project_id: project.id })
-    if (phErr || !phase) continue
-    for (const step of steps) {
-      await db.steps.insert({ ...step, phase_id: phase.id, status: 'pendiente' })
+    const { data: project, error } = await db.projects.insert(MC.project)
+    if (error || !project) return
+
+    for (const { steps, ...phaseFields } of MC.phases) {
+      const { data: phase } = await db.phases.insert({ ...phaseFields, project_id: project.id })
+      if (!phase) continue
+      for (const step of steps) {
+        await db.steps.insert({ ...step, phase_id: phase.id, status: 'pendiente' })
+      }
     }
+
+    // Mark as seeded permanently
+    await supabase.from('app_settings').upsert({ key: 'seeded', value: 'true' })
+  } catch (e) {
+    console.warn('seed error:', e)
   }
 }

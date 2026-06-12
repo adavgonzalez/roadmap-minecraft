@@ -65,7 +65,77 @@ function DragHandle({ listeners, attributes }) {
   )
 }
 
-/* ── Toggle button shared style ── */
+const getYtId = url => {
+  if (!url) return null
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/))([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
+/* ── MC Checkbox ── */
+function MCCheckbox({ checked, indeterminate, onChange }) {
+  return (
+    <button
+      onClick={onChange}
+      title={checked ? 'Marcar como pendiente' : 'Marcar como completado'}
+      style={{
+        width: 20, height: 20, flexShrink: 0,
+        background: checked ? '#4ade80' : indeterminate ? '#fbbf2422' : 'transparent',
+        border: `2px solid ${checked ? '#4ade80' : indeterminate ? '#fbbf24' : '#3a5070'}`,
+        borderRadius: 3, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+        boxShadow: checked ? '0 0 8px #4ade8066' : 'none',
+        imageRendering: 'pixelated',
+      }}
+      onMouseEnter={e => { if (!checked) e.currentTarget.style.borderColor = '#4ade80' }}
+      onMouseLeave={e => { if (!checked) e.currentTarget.style.borderColor = indeterminate ? '#fbbf24' : '#3a5070' }}
+    >
+      {checked    && <span style={{ color:'#000', fontSize:12, fontWeight:900, lineHeight:1, marginTop:-1 }}>✓</span>}
+      {indeterminate && !checked && <span style={{ color:'#fbbf24', fontSize:14, lineHeight:1 }}>–</span>}
+    </button>
+  )
+}
+
+/* ── YouTube Thumbnail ── */
+function YTThumbnail({ url }) {
+  const id = getYtId(url)
+  if (!id) return null
+  return (
+    <a href={`https://youtube.com/watch?v=${id}`} target="_blank" rel="noreferrer"
+      style={{ display:'block', position:'relative', borderRadius:8, overflow:'hidden',
+        border:'1px solid #1c2d42', textDecoration:'none' }}>
+      <img
+        src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`}
+        alt="Tutorial"
+        style={{ width:'100%', display:'block', aspectRatio:'16/9', objectFit:'cover' }}
+        onError={e => { e.target.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg` }}
+      />
+      {/* Overlay */}
+      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center',
+        justifyContent:'center', background:'rgba(0,0,0,0.3)',
+        transition:'background 0.2s' }}
+        onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.1)'}
+        onMouseLeave={e => e.currentTarget.style.background='rgba(0,0,0,0.3)'}>
+        <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(255,0,0,0.92)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow:'0 4px 20px rgba(0,0,0,0.7)', transition:'transform 0.2s' }}
+          onMouseEnter={e => e.currentTarget.style.transform='scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
+          <span style={{ color:'#fff', fontSize:20, marginLeft:5 }}>▶</span>
+        </div>
+      </div>
+      {/* Bottom bar */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0,
+        background:'linear-gradient(transparent, rgba(0,0,0,0.85))',
+        padding:'20px 10px 7px', fontSize:11, color:'rgba(255,255,255,0.8)',
+        display:'flex', alignItems:'center', gap:5 }}>
+        <span style={{ background:'#ff0000', borderRadius:3, padding:'1px 5px', fontSize:10,
+          fontWeight:700, color:'#fff' }}>YT</span>
+        Ver tutorial en YouTube
+      </div>
+    </a>
+  )
+}
 function ToggleBtn({ active, onClick, children }) {
   return (
     <button onClick={onClick}
@@ -79,7 +149,6 @@ function ToggleBtn({ active, onClick, children }) {
   )
 }
 
-/* ── Step Card ── */
 function StepCard({ step, onUpdated, onDeleted, dragProps }) {
   const [hover,     setHover]     = useState(false)
   const [editing,   setEditing]   = useState(false)
@@ -87,14 +156,24 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
   const [saving,    setSaving]    = useState(false)
   const [imgOpen,   setImgOpen]   = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
+  const [ytOpen,    setYtOpen]    = useState(false)
   const [lightbox,  setLightbox]  = useState(false)
 
   const borderColor = { pendiente:'#2a3a4d', progreso:'#f59e0b', completado:'#10b981' }[step.status]
   const bgColor     = { pendiente:C.card,    progreso:'#1c1908',  completado:'#0b1b10' }[step.status]
-  const done      = step.status === 'completado'
-  const hasNotes  = !!step.notes?.trim()
-  const hasImage  = !!step.image_url
+  const done   = step.status === 'completado'
+  const inProg = step.status === 'progreso'
+  const hasNotes = !!step.notes?.trim()
+  const hasImage = !!step.image_url
+  const hasYt    = !!getYtId(step.youtube_url)
 
+  async function toggleComplete() {
+    const next = done ? 'pendiente' : 'completado'
+    setSaving(true)
+    const { data } = await db.steps.update(step.id, { status: next })
+    if (data) onUpdated(data)
+    setSaving(false)
+  }
   async function changeStatus(val) {
     setSaving(true)
     const { data } = await db.steps.update(step.id, { status: val })
@@ -120,10 +199,19 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
           borderLeft:`4px solid ${borderColor}`, borderRadius:8, marginBottom:8,
           transition:'background 0.15s,border-color 0.15s', opacity:done?0.78:1 }}
       >
-        <div style={{ padding:'11px 13px', display:'flex', gap:0, alignItems:'stretch' }}>
-          <DragHandle {...dragProps} />
+        <div style={{ padding:'11px 13px', display:'flex', gap:8, alignItems:'flex-start' }}>
+          {/* Drag handle + Checkbox */}
+          <div style={{ display:'flex', alignItems:'center', gap:6, paddingTop:1, flexShrink:0 }}>
+            <DragHandle {...dragProps} />
+            <MCCheckbox
+              checked={done}
+              indeterminate={inProg}
+              onChange={toggleComplete}
+            />
+          </div>
+
           <div style={{ flex:1, minWidth:0 }}>
-            {/* Title row */}
+            {/* Title + actions */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:14, fontWeight:600, flex:1, minWidth:0, lineHeight:1.4,
                 color:done?C.muted:C.text, textDecoration:done?'line-through':'none' }}>
@@ -137,7 +225,9 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
                                <IBtn onClick={() => setConfirm(true)} danger>🗑</IBtn></>
                 }
                 <select value={step.status} onChange={e => changeStatus(e.target.value)}
-                  style={{ background:C.bg, color:C.text, border:`1px solid ${C.border}`, padding:'4px 8px', borderRadius:5, fontSize:12, cursor:'pointer', outline:'none', flexShrink:0 }}>
+                  style={{ background:C.bg, color:C.text, border:`1px solid ${C.border}`,
+                    padding:'3px 7px', borderRadius:5, fontSize:11, cursor:'pointer',
+                    outline:'none', flexShrink:0 }}>
                   <option value="pendiente">Pendiente</option>
                   <option value="progreso">En Progreso</option>
                   <option value="completado">Completado</option>
@@ -146,18 +236,20 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
             </div>
 
             {step.description && (
-              <p style={{ fontSize:13, color:C.muted, margin:'6px 0 0', lineHeight:1.55 }}>{step.description}</p>
+              <p style={{ fontSize:13, color:C.muted, margin:'5px 0 0', lineHeight:1.55 }}>{step.description}</p>
             )}
 
             {/* Badges + toggles */}
-            {(step.badges?.length > 0 || hasImage || hasNotes) && (
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8, flexWrap:'wrap', gap:5 }}>
+            {(step.badges?.length > 0 || hasImage || hasNotes || hasYt) && (
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                marginTop:7, flexWrap:'wrap', gap:5 }}>
                 {step.badges?.length > 0 && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                     {step.badges.map((b, i) => <Badge key={i} label={b.label} type={b.type} />)}
                   </div>
                 )}
-                <div style={{ display:'flex', gap:5, marginLeft:'auto' }}>
+                <div style={{ display:'flex', gap:5, marginLeft:'auto', flexWrap:'wrap' }}>
+                  {hasYt    && <ToggleBtn active={ytOpen}    onClick={() => setYtOpen(o=>!o)}>📺 Tutorial {ytOpen?'▴':'▾'}</ToggleBtn>}
                   {hasImage && <ToggleBtn active={imgOpen}   onClick={() => setImgOpen(o=>!o)}>📸 Imagen {imgOpen?'▴':'▾'}</ToggleBtn>}
                   {hasNotes && <ToggleBtn active={notesOpen} onClick={() => setNotesOpen(o=>!o)}>📝 Notas {notesOpen?'▴':'▾'}</ToggleBtn>}
                 </div>
@@ -165,6 +257,13 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
             )}
           </div>
         </div>
+
+        {/* YouTube panel */}
+        {ytOpen && hasYt && (
+          <div style={{ borderTop:`1px solid ${C.border}`, padding:'10px 14px', background:'rgba(0,0,0,0.2)' }}>
+            <YTThumbnail url={step.youtube_url} />
+          </div>
+        )}
 
         {/* Image panel */}
         {imgOpen && hasImage && (
@@ -186,7 +285,6 @@ function StepCard({ step, onUpdated, onDeleted, dragProps }) {
         )}
       </div>
 
-      {/* Lightbox */}
       {lightbox && (
         <div onClick={() => setLightbox(false)}
           style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,0.92)',
