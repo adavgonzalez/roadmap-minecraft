@@ -2,19 +2,25 @@ import { useState } from 'react'
 import { db } from './db'
 import { BuildModal } from './Modals'
 
-const C = { bg:'#080d16', panel:'#0f1724', card:'#172030', border:'#1c2b3f', text:'#f0f4fa', muted:'#5a7190' }
+const C = { bg:'#080d16', panel:'#0d1520', card:'#111f30', border:'#1c2d42', text:'#f0f4fa', muted:'#5a7190' }
+const MC_FONT = "'VT323', monospace"
 
 const DIM = {
-  overworld: { label:'Overworld', emoji:'🌿', color:'#10b981', bg:'#0b1b10' },
-  nether:    { label:'Nether',    emoji:'🔥', color:'#ef4444', bg:'#1b0a0a' },
-  end:       { label:'End',       emoji:'🌌', color:'#a855f7', bg:'#16082b' },
+  overworld: { label:'Overworld', icon:'grass-block',  color:'#4ade80', bg:'#0a1f10' },
+  nether:    { label:'Nether',    icon:'netherrack',   color:'#f87171', bg:'#1f0a0a' },
+  end:       { label:'End',       icon:'end-stone',    color:'#c084fc', bg:'#160a2b' },
 }
 
 const STATUS = {
-  planeado:     { label:'Planeado',     color:'#5a7190', bg:'#12202e' },
-  construyendo: { label:'Construyendo', color:'#f59e0b', bg:'#1c1908' },
-  terminado:    { label:'Terminado',    color:'#10b981', bg:'#0b1b10' },
+  planeado:     { label:'Planeado',     color:'#7dd3fc', bg:'#0a1830' },
+  construyendo: { label:'Construyendo', color:'#fbbf24', bg:'#1f1408' },
+  terminado:    { label:'Terminado',    color:'#4ade80', bg:'#0a1f10' },
 }
+
+const McIcon = ({ name, size = '' }) => (
+  <i className={`mc mc-${name}${size ? ` mc-${size}` : ''}`}
+     style={{ display:'inline-block', imageRendering:'pixelated', flexShrink:0 }} />
+)
 
 function BuildCard({ build, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false)
@@ -61,8 +67,9 @@ function BuildCard({ build, onUpdated, onDeleted }) {
           {/* Header */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:10 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
-              <span style={{ fontSize:20, flexShrink:0 }}>{dim.emoji}</span>
-              <span style={{ fontSize:14, fontWeight:700, color:C.text, lineHeight:1.3 }}>{build.name}</span>
+              <McIcon name={dim.icon} size="xl" />
+              <span style={{ fontFamily:MC_FONT, fontSize:18, color:C.text, lineHeight:1.2,
+                textShadow:'1px 1px 0 #000' }}>{build.name}</span>
             </div>
             {hover && !confirm && (
               <div style={{ display:'flex', gap:2, flexShrink:0 }}>
@@ -88,11 +95,17 @@ function BuildCard({ build, onUpdated, onDeleted }) {
 
           {/* Badges */}
           <div style={{ display:'flex', gap:6, marginBottom: build.description ? 10 : 0, flexWrap:'wrap' }}>
-            <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:dim.bg, color:dim.color }}>
-              {dim.emoji} {dim.label}
+            <span style={{ display:'flex', alignItems:'center', gap:5,
+              padding:'3px 8px', borderRadius:4, fontSize:12, fontWeight:600,
+              background:dim.bg, color:dim.color, border:`1px solid ${dim.color}30` }}>
+              <McIcon name={dim.icon} size="sm" /> {dim.label}
             </span>
-            <span style={{ padding:'2px 8px', borderRadius:4, fontSize:11, fontWeight:600, background:sta.bg, color:sta.color }}>
-              {build.status === 'planeado' ? '🗺️' : build.status === 'construyendo' ? '🏗️' : '✅'} {sta.label}
+            <span style={{ display:'flex', alignItems:'center', gap:5,
+              padding:'3px 8px', borderRadius:4, fontSize:12, fontWeight:600,
+              background:sta.bg, color:sta.color, border:`1px solid ${sta.color}30` }}>
+              {build.status === 'planeado' ? <McIcon name="map" size="sm" /> :
+               build.status === 'construyendo' ? <McIcon name="crafting-table" size="sm" /> :
+               <McIcon name="emerald" size="sm" />} {sta.label}
             </span>
           </div>
 

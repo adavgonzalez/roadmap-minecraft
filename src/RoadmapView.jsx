@@ -13,8 +13,16 @@ import { db } from './db'
 import { PhaseModal, StepModal } from './Modals'
 import MarkdownRenderer from './MarkdownRenderer'
 
-const C = { bg:'#080d16', panel:'#0f1724', card:'#172030', border:'#1c2b3f', text:'#f0f4fa', muted:'#5a7190', hover:'#1c2d42' }
+const C = { bg:'#080d16', panel:'#0d1520', card:'#111f30', border:'#1c2d42', text:'#f0f4fa', muted:'#5a7190', hover:'#162238' }
 const BADGE_S = { default:{bg:'#1a3050',c:'#7dd3fc'}, location:{bg:'#1e3a8a',c:'#93c5fd'}, important:{bg:'#7f1d1d',c:'#fca5a5'} }
+const MC_FONT = "'VT323', monospace"
+
+// Minecraft icon per phase index
+const PHASE_ICONS = ['cobblestone','blaze-rod','hopper','beacon','diamond','emerald-block','gold-block','nether-star']
+const McIcon = ({ name, size = '' }) => (
+  <i className={`mc mc-${name}${size ? ` mc-${size}` : ''}`}
+     style={{ display:'inline-block', imageRendering:'pixelated', flexShrink:0 }} />
+)
 
 function Badge({ label, type = 'default' }) {
   const s = BADGE_S[type] || BADGE_S.default
@@ -209,7 +217,7 @@ function SortableStep({ step, ...props }) {
 }
 
 /* ── Phase Section ── */
-function PhaseSection({ phase, dragProps, isDragging,
+function PhaseSection({ phase, phaseIndex = 0, dragProps, isDragging,
   onPhaseUpdated, onPhaseDeleted, onAddStep, onUpdateStep, onDeleteStep, onStepsReordered }) {
 
   const [collapsed,  setCollapsed]  = useState(false)
@@ -270,8 +278,11 @@ function PhaseSection({ phase, dragProps, isDragging,
           </button>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-              <span style={{ fontSize:13, fontWeight:700, color:C.text }}>{phase.name}</span>
-              <span style={{ fontSize:11, color:C.muted, background:C.bg, padding:'1px 6px', borderRadius:3 }}>
+              <McIcon name={PHASE_ICONS[phaseIndex % PHASE_ICONS.length]} size="sm" />
+              <span style={{ fontFamily:MC_FONT, fontSize:17, color:C.text, letterSpacing:'0.03em',
+                textShadow:'1px 1px 0 #000' }}>{phase.name}</span>
+              <span style={{ fontSize:11, color:C.muted, background:'rgba(0,0,0,0.3)',
+                padding:'1px 6px', borderRadius:3, border:`1px solid ${C.border}` }}>
                 {done}/{total} · {pct}%
               </span>
               {hasNotes && (
@@ -280,7 +291,12 @@ function PhaseSection({ phase, dragProps, isDragging,
                 </ToggleBtn>
               )}
             </div>
-            <div style={{ minWidth:80, flex:1, maxWidth:260 }}><ProgBar pct={pct} color={phase.color} /></div>
+            <div style={{ minWidth:80, flex:1, maxWidth:260 }}>
+              <div style={{ height:4, background:'#111', borderRadius:1, overflow:'hidden' }}>
+                <div style={{ width:`${pct}%`, height:'100%', background:phase.color,
+                  boxShadow:`0 0 6px ${phase.color}66`, transition:'width 0.5s ease' }} />
+              </div>
+            </div>
           </div>
           <div style={{ display:'flex', gap:2, flexShrink:0 }} onClick={e => e.stopPropagation()}>
             {confirm
@@ -342,11 +358,11 @@ function PhaseSection({ phase, dragProps, isDragging,
 }
 
 /* ── Sortable phase wrapper ── */
-function SortablePhase({ phase, ...props }) {
+function SortablePhase({ phase, phaseIndex, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: phase.id })
   return (
     <div ref={setNodeRef} style={{ transform:CSS.Transform.toString(transform), transition, zIndex:isDragging?20:undefined }}>
-      <PhaseSection phase={phase} dragProps={{ listeners, attributes }} isDragging={isDragging} {...props} />
+      <PhaseSection phase={phase} phaseIndex={phaseIndex} dragProps={{ listeners, attributes }} isDragging={isDragging} {...props} />
     </div>
   )
 }
@@ -401,8 +417,8 @@ export default function RoadmapView({ phases, projectId, onPhasesChange }) {
     <div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePhaseDragEnd}>
         <SortableContext items={phases.map(p => p.id)} strategy={verticalListSortingStrategy}>
-          {phases.map(phase => (
-            <SortablePhase key={phase.id} phase={phase}
+          {phases.map((phase, idx) => (
+            <SortablePhase key={phase.id} phase={phase} phaseIndex={idx}
               onPhaseUpdated={updatePhase}
               onPhaseDeleted={deletePhase}
               onAddStep={addStep}

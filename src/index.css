@@ -1,8 +1,42 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0f1724; }
-::-webkit-scrollbar-thumb { background: #1c2b3f; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2a3f58; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #080d16; }
+::-webkit-scrollbar-thumb { background: #1c3050; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2a4a78; }
 select option { background: #0f1724; }
+
+/* McIcons pixel rendering */
+.mc { image-rendering: pixelated !important; }
+
+/* VT323 font utility */
+.font-mc { font-family: 'VT323', monospace; letter-spacing: 0.04em; }
+
+/* Minecraft-style XP bar (green glow) */
+.xp-bar-track {
+  height: 8px;
+  background: #111;
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8);
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #7fff20 0%, #3ea600 60%, #7fff20 100%);
+  box-shadow: 0 0 10px #7fff2066, 0 0 4px #7fff2099;
+  transition: width 0.5s ease;
+  border-radius: 1px;
+  image-rendering: pixelated;
+}
+
+/* Pixel border panel - inventory style */
+.mc-panel {
+  outline: 2px solid #000;
+  box-shadow:
+    inset 1px 1px 0 #6b6b6b33,
+    inset -1px -1px 0 #00000066;
+}
